@@ -15,7 +15,8 @@ public class SpecialPrint {
     private static final String AVERAGE = "Average";
     private static final String SEPARATOR = " | ";
     private static final String END = " |";
-    private int wightFirstColumn = STUDENT.length() + 1;
+    private int widhtFirstColumn = STUDENT.length() + 1;
+    private static String pattern;
     List<CourseResult> courseResults = new ArrayList<>();
     List<String> taskNames = new ArrayList<>();
     List<String> students = new ArrayList<>();
@@ -30,12 +31,12 @@ public class SpecialPrint {
 
     public StringBuilder buildHeader(StringBuilder builder) {
         students = getStudents(courseResults);
-        wightFirstColumn = getLengthName(students);
-        builder.append(String.format("%-" + wightFirstColumn + "s", STUDENT) + SEPARATOR);
+        widhtFirstColumn = getLengthName(students);
+        pattern = "%-" + widhtFirstColumn + "s";
+        builder.append(String.format(pattern, STUDENT)).append(SEPARATOR);
         taskNames = getTaskNames(courseResults);
         builder.append(taskNames.stream().collect(Collectors.joining(SEPARATOR)))
-                .append(SEPARATOR + TOTAL + SEPARATOR + MARK + END)
-                .append("\n");
+                .append(SEPARATOR).append(TOTAL).append(SEPARATOR).append(MARK).append(END).append("\n");
         return builder;
     }
 
@@ -44,13 +45,13 @@ public class SpecialPrint {
         Map<Person, String> marks = collecting.defineMarks(courseResults.stream());
         builder.append(students.stream()
             .map(s -> { StringBuilder results = new StringBuilder()
-                .append(String.format("%-" + wightFirstColumn + "s" + SEPARATOR, s))
+                .append(String.format(pattern, s)).append(SEPARATOR)
                 .append(taskNames.stream()
                         .map(t -> String.format("%" + t.length() + "s", findTaskResult(s, t)))
                         .collect(Collectors.joining(SEPARATOR))).append(SEPARATOR)
-                .append(String.format("%.2f", getTotalOfStudent(s, totalScores)).replace(",", ".") + SEPARATOR)
-                .append("   " + getMarkOfStudent(s, marks))
-                .append(END);
+                .append(String.format("%.2f", getTotalOfStudent(s, totalScores)).replace(",", "."))
+                .append(SEPARATOR)
+                .append("   ").append(getMarkOfStudent(s, marks)).append(END);
                 return results.toString();
                 })
             .collect(Collectors.joining("\n"))).append("\n");
@@ -60,37 +61,39 @@ public class SpecialPrint {
     public StringBuilder buildLastRow(StringBuilder builder) {
         Map<String, Double> averageScores = collecting.averageScoresPerTask(courseResults.stream());
         double sum = collecting.averageTotalScore(courseResults.stream());
-        builder.append(String.format("%-" + wightFirstColumn + "s", AVERAGE) + SEPARATOR)
+        builder.append(String.format(pattern, AVERAGE)).append(SEPARATOR)
                 .append(taskNames.stream()
                     .map(s -> String.format("%" + s.length() + ".2f", averageScores.get(s)).replace(",", "."))
                     .collect(Collectors.joining(SEPARATOR)))
                 .append(SEPARATOR)
-                .append(String.format("%.2f", sum).replace(",", ".") + SEPARATOR)
-                .append("   " + (sum > 90? "A": sum>=83?"B":sum>=75?"C":sum>=68?"D":sum>=60?"E":"F"))
+                .append(String.format("%.2f", sum).replace(",", ".")).append(SEPARATOR)
+                .append("   ")
+                .append(collecting.scoreAndMarks.entrySet().stream()
+                        .filter(v -> v.getKey() <= sum)
+                        .map(v -> v.getValue())
+                        .findFirst().orElse("F"))
                 .append(END);
         return builder;
     }
 
     private List<String> getTaskNames(List<CourseResult> courseResults) {
-        List<String> taskNames = courseResults.stream()
+        return courseResults.stream()
                 .flatMap(r -> r.getTaskResults().keySet().stream())
                 .distinct().sorted()
                 .collect(Collectors.toList());
-        return taskNames;
     }
 
     private List<String> getStudents(List<CourseResult> courseResults) {
-        List<String> students = courseResults.stream()
+        return courseResults.stream()
                 .map(CourseResult::getPerson)
                 .distinct().sorted(Comparator.comparing(Person::getLastName))
                 .map(s -> s.getLastName() + " " + s.getFirstName())
                 .collect(Collectors.toList());
-        return students;
     }
 
     private int getLengthName (List<String> students) {
-        return Math.max(wightFirstColumn, students.stream().mapToInt(s -> s.length())
-                .max().orElse(wightFirstColumn));
+        return Math.max(widhtFirstColumn, students.stream().mapToInt(s -> s.length())
+                .max().orElse(widhtFirstColumn));
     }
 
     public void addCourseResult(CourseResult courseResult) {

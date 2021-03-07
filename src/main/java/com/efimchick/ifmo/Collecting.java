@@ -13,83 +13,95 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class Collecting {
+    protected static Map<Double, String> scoreAndMarks;
+
+    static {
+        scoreAndMarks = new LinkedHashMap<>();
+        scoreAndMarks.put(90.01, "A");
+        scoreAndMarks.put(83.0, "B");
+        scoreAndMarks.put(75.0, "C");
+        scoreAndMarks.put(68.0, "D");
+        scoreAndMarks.put(60.0, "E");
+        scoreAndMarks.put(0.0, "F");
+    }
 
     public long sum(IntStream stream) {
-        long sum = stream.mapToLong(num -> num).sum();
-        return sum;
+        return stream.mapToLong(num -> num).sum();
     }
 
     public long production(IntStream stream) {
-        long prod = stream.reduce(1, (a, b) -> a * b);
-        return prod;
+        return stream.reduce(1, (a, b) -> a * b);
     }
 
     public long oddSum(IntStream stream) {
-        long sum = stream.filter(s -> s % 2 != 0).mapToLong(num -> num).sum();
-        return sum;
+        return stream.filter(s -> s % 2 != 0).mapToLong(num -> num).sum();
     }
 
     public Map<Integer, Integer> sumByRemainder(int i, IntStream stream) {
-        Map<Integer, Integer> sum = stream.boxed()
+        return stream.boxed()
                 .collect(Collectors.groupingBy(s -> s % i, Collectors.summingInt(s -> s)));
-        return sum;
     }
 
     public Map<Person, Double> totalScores(Stream<CourseResult> stream) {
         List<CourseResult> courseResults = stream.collect(Collectors.toList());
-        long countTasks = courseResults.stream().flatMap(r -> r.getTaskResults().keySet().stream()).distinct().count();
-        Map<Person, Double> total = courseResults.stream()
+        return courseResults.stream()
                 .collect(Collectors.toMap(CourseResult::getPerson, r -> r.getTaskResults()
                 .values().stream()
                 .mapToInt(v -> v)
-                .sum() / (double) countTasks));
-        return total;
+                .sum() / (double) getCountTasks(courseResults)));
+    }
+
+    private long getCountTasks (List<CourseResult> courseResults) {
+        return courseResults.stream()
+                .flatMap(r -> r.getTaskResults()
+                .keySet().stream())
+                .distinct().count();
+    }
+
+    private long getCountPeople (List<CourseResult> courseResults) {
+        return courseResults.stream()
+                .map(CourseResult::getPerson)
+                .distinct().count();
     }
 
     public Double averageTotalScore(Stream<CourseResult> stream) {
         List<CourseResult> courseResults = stream.collect(Collectors.toList());
-        long countPeople = courseResults.stream().map(CourseResult::getPerson).distinct().count();
-        long countTasks = courseResults.stream().flatMap(r -> r.getTaskResults().keySet().stream()).distinct().count();
-        Double average = courseResults.stream()
-                        .map(CourseResult::getTaskResults)
-                        .flatMapToDouble(r -> r.values().stream().mapToDouble(s -> s))
-                        .sum() / (countPeople * countTasks);
-        return average;
+        return courseResults.stream()
+                .map(CourseResult::getTaskResults)
+                .flatMapToDouble(r -> r.values().stream().mapToDouble(s -> s))
+                .sum() / (getCountPeople(courseResults) * getCountTasks(courseResults));
     }
 
     public Map<String, Double> averageScoresPerTask(Stream<CourseResult> stream) {
         List<CourseResult> courseResults = stream.collect(Collectors.toList());
-        long countPeople = courseResults.stream().map(CourseResult::getPerson).distinct().count();
-        Map<String, Double> average = courseResults.stream()
+        return courseResults.stream()
                 .flatMap(r -> r.getTaskResults().entrySet().stream())
                 .collect(Collectors.groupingBy(Map.Entry::getKey,
-                        Collectors.summingDouble(e -> e.getValue() / (double) countPeople)));
-        return average;
+                    Collectors.summingDouble(e -> e.getValue() / (double) getCountPeople(courseResults))));
     }
 
     public Map<Person, String> defineMarks(Stream<CourseResult> stream) {
         List<CourseResult> courseResults = stream.collect(Collectors.toList());
-        long countTasks = courseResults.stream().flatMap(r -> r.getTaskResults().keySet().stream()).distinct().count();
-        Map<Person, String> defineMarks = courseResults.stream()
-                .collect(Collectors.toMap(CourseResult::getPerson,
-                    s -> {double score = s.getTaskResults().values().stream()
-                        .mapToDouble(v -> v)
-                        .sum() /  countTasks;
-                    return score>90?"A":score>=83?"B":score>=75?"C":score>=68?"D":score>=60?"E":"F";
-                }));
-        return defineMarks;
+        return courseResults.stream()
+                    .collect(Collectors.toMap(CourseResult::getPerson,
+                        s -> {double score = s.getTaskResults().values().stream()
+                            .mapToDouble(v -> v)
+                            .sum() / getCountTasks(courseResults);
+                            return scoreAndMarks.entrySet().stream()
+                                .filter(v -> v.getKey() <= score)
+                                .map(v -> v.getValue())
+                                .findFirst().orElse("F");}));
     }
 
     public String easiestTask(Stream<CourseResult> stream) {
         List<CourseResult> courseResults = stream.collect(Collectors.toList());
-        String task = courseResults.stream()
+        return courseResults.stream()
                 .flatMap(r -> r.getTaskResults().entrySet().stream())
                 .collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.summingDouble(Map.Entry::getValue)))
                 .entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
                 .orElse("Nothing found.");
-        return task;
     }
 
     public Collector<CourseResult, SpecialPrint, String> printableStringCollector() {
@@ -112,9 +124,8 @@ public class Collecting {
             @Override
             public Function<SpecialPrint, String> finisher() {
                 return specialPrint -> {StringBuilder builder = new StringBuilder();
-                specialPrint.buildResult(builder);
-                return builder.toString();
-                };
+                            specialPrint.buildResult(builder);
+                            return builder.toString();};
             }
 
             @Override
